@@ -1,0 +1,9 @@
+Random Forest Classification Report\nGenerated at: 2025-08-10 14:57:15\n\nModel Parameters:\n{'n_estimators': 100, 'random_state': 42, 'n_jobs': -1}\n\nPerformance Metrics:\nAccuracy: 0.9700\nF1-Score: 0.9681\nPrecision: 0.9712\nRecall: 0.9700\n\nClassification Report:\n              precision    recall  f1-score   support
+
+         Low       1.00      1.00      1.00        68
+      Medium       0.96      1.00      0.98       285
+        High       1.00      0.74      0.85        47
+
+    accuracy                           0.97       400
+   macro avg       0.99      0.91      0.94       400
+weighted avg       0.97      0.97      0.97       400

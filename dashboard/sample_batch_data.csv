@@ -1,0 +1,6 @@
+Duration_days,Energy_Unit_log,Energy_density_Joule_sqr,Volume_m3_sqr,Event_freq_unit_per_day_log,Energy_Joule_per_day_sqr,Volume_m3_per_day_sqr,Energy_per_Volume_log
+15.5,5.2,450.0,120.0,2.8,890.0,350.0,3.4
+20.0,4.8,520.0,150.0,3.1,750.0,400.0,3.2
+12.3,6.1,380.0,95.0,2.5,1050.0,280.0,3.8
+18.7,5.5,460.0,140.0,2.9,820.0,320.0,3.5
+25.2,4.2,600.0,180.0,3.4,650.0,480.0,2.9

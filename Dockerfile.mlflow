@@ -1,0 +1,14 @@
+# Use the official MLflow image as base
+FROM ghcr.io/mlflow/mlflow:latest
+
+# Install psycopg2 for PostgreSQL support
+RUN pip install psycopg2-binary boto3
+
+# Set working directory
+WORKDIR /mlflow
+
+# Expose port
+EXPOSE 5000
+
+# Default command
+CMD ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000"]
