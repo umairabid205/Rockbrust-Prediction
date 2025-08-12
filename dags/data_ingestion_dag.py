@@ -44,6 +44,7 @@ except ImportError as e:
 
 
 
+
 # DAG default arguments - configuration for all tasks in this DAG
 default_args = {
     'owner': 'TEAM_GAMMA',  # Owner of the DAG
@@ -63,11 +64,13 @@ dag = DAG(
     'rockburst_data_ingestion',  # Unique identifier for this DAG
     default_args=default_args,  # Use the default arguments defined above
     description='Complete data ingestion pipeline for rockburst sensor data with InfluxDB schema configuration',  # Human-readable description
-    schedule=timedelta(hours=6),  # Run every 6 hours for data ingestion
+    schedule=timedelta(hours=24),  # Run every 23 hours for data ingestion
     catchup=False,  # Don't run for past dates when DAG is first created
     tags=['rockbrust', 'data-ingestion', 'sensor-data', 'preprocessing', 'influxdb'],  # Tags for organization
     max_active_tasks=3,  # Maximum number of tasks that can run simultaneously
 )
+
+
 
 # InfluxDB Schema Configuration for User Input Rockburst Data
 # Define the structure for user-submitted rockburst analysis data
@@ -142,6 +145,7 @@ def check_data_directory(**context):
                 # Log that directory already exists
                 custom_logging.info(f"Directory already exists: {directory}")
         
+
         # Check for CSV files in raw data directory
         csv_files = []  # Initialize empty list for CSV files
         if os.path.exists(raw_data_path):
@@ -149,6 +153,7 @@ def check_data_directory(**context):
             all_files = os.listdir(raw_data_path)
             # Filter for CSV files only
             csv_files = [f for f in all_files if f.lower().endswith('.csv')]
+            
             
             # Log findings about CSV files
             custom_logging.info(f"Found {len(csv_files)} CSV files in raw data directory")

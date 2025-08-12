@@ -1,0 +1,20 @@
+{
+  "feature_names": [
+    "Duration_days",
+    "Energy_Unit_log",
+    "Energy_density_Joule_sqr",
+    "Volume_m3_sqr",
+    "Event_freq_unit_per_day_log",
+    "Energy_Joule_per_day_sqr",
+    "Volume_m3_per_day_sqr",
+    "Energy_per_Volume_log"
+  ],
+  "target_name": "Intensity_Level_encoded",
+  "class_names": {
+    "0": "None",
+    "1": "Low",
+    "2": "Medium",
+    "3": "High"
+  },
+  "last_training_time": "2025-08-12T12:12:12.870889"
+}

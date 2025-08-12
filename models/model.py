@@ -18,318 +18,161 @@ from datetime import datetime, timedelta
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score
 
 # Add project root to path
 sys.path.append('.')
 sys.path.append('./models')
 
-from feature_engineering import RockburstFeatureEngineering
 from exception_logging.logger import get_logger
 
 
 class RockburstRandomForestModel:
     """
-    Random Forest Model for Rockburst Prediction
-    
-    This class encapsulates the Random Forest model with optimized parameters
-    for rockburst intensity classification (Low, Medium, High).
+    Simple Random Forest Model for Rockburst Prediction using only real features.
     """
-    
-    def __init__(self, config_path=None):
-        """
-        Initialize the Random Forest model.
-        
-        Args:
-            config_path: Path to model configuration file
-        """
+    def __init__(self):
         self.logger = get_logger("rockburst_random_forest")
         self.model = None
-        self.feature_engineer = None
-        self.scaler = None
+        self.scaler = StandardScaler()
         self.is_trained = False
         self.last_training_time = None
+        self.feature_names = [
+            'Duration_days',
+            'Energy_Unit_log',
+            'Energy_density_Joule_sqr',
+            'Volume_m3_sqr',
+            'Event_freq_unit_per_day_log',
+            'Energy_Joule_per_day_sqr',
+            'Volume_m3_per_day_sqr',
+            'Energy_per_Volume_log'
+        ]
+        self.target_name = 'Intensity_Level_encoded'
+        self.class_names = {0: 'None', 1: 'Low', 2: 'Medium', 3: 'High'}
         
-        # Load configuration
-        self.config = self._load_config(config_path)
-        
-        # Initialize model with configuration
-        self._initialize_model()
-        
-    def _load_config(self, config_path=None):
-        """Load model configuration"""
-        default_config = {
-            'model_params': {
-                'n_estimators': 100,
-                'max_depth': 20,
-                'min_samples_split': 5,
-                'min_samples_leaf': 2,
-                'max_features': 'sqrt',
-                'bootstrap': True,
-                'random_state': 42,
-                'n_jobs': -1,
-                'class_weight': 'balanced'
-            },
-            'training': {
-                'test_size': 0.2,
-                'validation_size': 0.1,
-                'random_state': 42,
-                'retrain_interval_hours': 24,
-                'min_samples_for_training': 100
-            },
-            'features': {
-                'use_feature_engineering': True,
-                'scale_features': True,
-                'feature_selection': False,
-                'n_top_features': 50
-            },
-            'model_persistence': {
-                'model_dir': './artifacts/models',
-                'model_filename': 'rockburst_rf_model.pkl',
-                'scaler_filename': 'feature_scaler.pkl',
-                'feature_engineer_filename': 'feature_engineer.pkl',
-                'config_filename': 'model_config.json',
-                'training_log_filename': 'training_log.json'
-            }
-        }
-        
-        if config_path and os.path.exists(config_path):
-            with open(config_path, 'r') as f:
-                user_config = json.load(f)
-            # Update default config with user config
-            default_config.update(user_config)
-            
-        return default_config
-        
-    def _initialize_model(self):
-        """Initialize the Random Forest model with configured parameters"""
-        self.model = RandomForestClassifier(**self.config['model_params'])
-        self.feature_engineer = RockburstFeatureEngineering()
-        
-        if self.config['features']['scale_features']:
-            self.scaler = StandardScaler()
-            
-        self.logger.info("Random Forest model initialized successfully")
-        
-    def needs_retraining(self):
-        """
-        Check if model needs retraining based on 24-hour interval.
-        
-        Returns:
-            bool: True if model needs retraining
-        """
-        if not self.is_trained or self.last_training_time is None:
-            return True
-            
-        time_since_training = datetime.now() - self.last_training_time
-        retrain_interval = timedelta(hours=self.config['training']['retrain_interval_hours'])
-        
-        return time_since_training >= retrain_interval
-        
-    def prepare_features(self, df, target_column='Intensity_Level_encoded'):
-        """
-        Prepare features for training or prediction.
-        
-        Args:
-            df: Input DataFrame
-            target_column: Name of target column
-            
-        Returns:
-            X: Feature matrix
-            y: Target vector (if target_column exists)
-        """
-        # Apply feature engineering if enabled
-        if self.config['features']['use_feature_engineering']:
-            df_processed = self.feature_engineer.create_comprehensive_features(df, target_column)
-        else:
-            df_processed = df.copy()
-            
-        # Separate features and target
-        if target_column in df_processed.columns:
-            X = df_processed.drop(target_column, axis=1)
-            y = df_processed[target_column]
-        else:
-            X = df_processed
-            y = None
-            
-        # Apply scaling if enabled
-        if self.config['features']['scale_features'] and self.scaler is not None:
-            if self.is_trained:
-                X = pd.DataFrame(
-                    self.scaler.transform(X),
-                    columns=X.columns,
-                    index=X.index
-                )
-            else:
-                X = pd.DataFrame(
-                    self.scaler.fit_transform(X),
-                    columns=X.columns,
-                    index=X.index
-                )
-                
+    def load_data(self, data_path):
+        """Load and prepare data from CSV file."""
+        self.logger.info(f"Loading data from: {data_path}")
+        df = pd.read_csv(data_path)
+        if 'Unnamed: 0' in df.columns:
+            df = df.drop('Unnamed: 0', axis=1)
+        X = df[self.feature_names]
+        y = df[self.target_name]
         return X, y
+
+
+    def train(self, X, y, test_size=0.2, random_state=42):
+        self.logger.info("Training Random Forest model...")
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=random_state, stratify=y
+        )
+        X_train_scaled = self.scaler.fit_transform(X_train)
+        X_test_scaled = self.scaler.transform(X_test)
+        self.model = RandomForestClassifier(
+            n_estimators=100,
+            max_depth=15,
+            min_samples_split=5,
+            min_samples_leaf=2,
+            random_state=random_state,
+            class_weight='balanced'
+        )
+
+
+        self.model.fit(X_train_scaled, y_train)
+        self.is_trained = True
+        self.last_training_time = datetime.now()
+        train_acc = accuracy_score(y_train, self.model.predict(X_train_scaled))
+        test_acc = accuracy_score(y_test, self.model.predict(X_test_scaled))
+        self.logger.info(f"Train accuracy: {train_acc:.4f}, Test accuracy: {test_acc:.4f}")
+        return train_acc, test_acc
         
+
+
+
+    def prepare_features(self, X):
+        """Prepare features for prediction (scaling, order)."""
+        if isinstance(X, dict):
+            X = pd.DataFrame([X])
+        X = X[self.feature_names]
+        X_scaled = self.scaler.transform(X)
+        return X_scaled
+        
+
+
     def get_model_info(self):
-        """
-        Get detailed model information.
-        
-        Returns:
-            dict: Model information
-        """
         info = {
             'model_type': 'RandomForestClassifier',
             'is_trained': self.is_trained,
             'last_training_time': self.last_training_time.isoformat() if self.last_training_time else None,
-            'needs_retraining': self.needs_retraining(),
-            'config': self.config,
-            'feature_count': None,
-            'class_names': ['Low', 'Medium', 'High']
+            'feature_count': len(self.feature_names),
+            'class_names': self.class_names
         }
-        
-        if self.is_trained and hasattr(self.model, 'n_features_in_'):
-            info['feature_count'] = self.model.n_features_in_
-            info['feature_importances'] = self.model.feature_importances_.tolist()
-            
+        if self.is_trained and hasattr(self.model, 'feature_importances_'):
+            info['feature_importances'] = dict(zip(self.feature_names, self.model.feature_importances_))
         return info
         
-    def save_model(self, model_dir=None):
-        """
-        Save the trained model and associated components.
-        
-        Args:
-            model_dir: Directory to save model (optional)
-        """
+
+
+    def save_model(self, model_dir='./artifacts/models'):
         if not self.is_trained:
             raise ValueError("Cannot save untrained model")
-            
-        if model_dir is None:
-            model_dir = self.config['model_persistence']['model_dir']
-            
-        # Create model directory
         os.makedirs(model_dir, exist_ok=True)
-        
-        # Save model
-        model_path = os.path.join(model_dir, self.config['model_persistence']['model_filename'])
-        joblib.dump(self.model, model_path)
-        self.logger.info(f"Model saved to: {model_path}")
-        
-        # Save feature engineer
-        if self.feature_engineer is not None:
-            fe_path = os.path.join(model_dir, self.config['model_persistence']['feature_engineer_filename'])
-            joblib.dump(self.feature_engineer, fe_path)
-            self.logger.info(f"Feature engineer saved to: {fe_path}")
-            
-        # Save scaler
-        if self.scaler is not None:
-            scaler_path = os.path.join(model_dir, self.config['model_persistence']['scaler_filename'])
-            joblib.dump(self.scaler, scaler_path)
-            self.logger.info(f"Scaler saved to: {scaler_path}")
-            
-        # Save configuration
-        config_path = os.path.join(model_dir, self.config['model_persistence']['config_filename'])
-        with open(config_path, 'w') as f:
-            config_to_save = self.config.copy()
-            config_to_save['last_training_time'] = self.last_training_time.isoformat() if self.last_training_time else None
-            json.dump(config_to_save, f, indent=2)
-            
-        # Save training log
-        log_path = os.path.join(model_dir, self.config['model_persistence']['training_log_filename'])
-        training_log = {
-            'last_training_time': self.last_training_time.isoformat() if self.last_training_time else None,
-            'model_version': '1.0',
-            'training_completed': True
+        joblib.dump(self.model, os.path.join(model_dir, 'rockburst_rf_model.pkl'))
+        joblib.dump(self.scaler, os.path.join(model_dir, 'feature_scaler.pkl'))
+        meta = {
+            'feature_names': self.feature_names,
+            'target_name': self.target_name,
+            'class_names': self.class_names,
+            'last_training_time': self.last_training_time.isoformat() if self.last_training_time else None
         }
-        with open(log_path, 'w') as f:
-            json.dump(training_log, f, indent=2)
-            
-        return model_path
-        
-    def load_model(self, model_dir=None):
-        """
-        Load a previously trained model.
-        
-        Args:
-            model_dir: Directory containing the saved model
-        """
-        if model_dir is None:
-            model_dir = self.config['model_persistence']['model_dir']
-            
-        # Load model
-        model_path = os.path.join(model_dir, self.config['model_persistence']['model_filename'])
+        with open(os.path.join(model_dir, 'model_metadata.json'), 'w') as f:
+            json.dump(meta, f, indent=2)
+        self.logger.info(f"Model and scaler saved to: {model_dir}")
+
+
+
+
+    def load_model(self, model_dir='./artifacts/models'):
+        model_path = os.path.join(model_dir, 'rockburst_rf_model.pkl')
+        scaler_path = os.path.join(model_dir, 'feature_scaler.pkl')
+        meta_path = os.path.join(model_dir, 'model_metadata.json')
         if os.path.exists(model_path):
             self.model = joblib.load(model_path)
-            self.logger.info(f"Model loaded from: {model_path}")
-        else:
-            raise FileNotFoundError(f"Model file not found: {model_path}")
-            
-        # Load feature engineer
-        fe_path = os.path.join(model_dir, self.config['model_persistence']['feature_engineer_filename'])
-        if os.path.exists(fe_path):
-            self.feature_engineer = joblib.load(fe_path)
-            self.logger.info(f"Feature engineer loaded from: {fe_path}")
-            
-        # Load scaler
-        scaler_path = os.path.join(model_dir, self.config['model_persistence']['scaler_filename'])
-        if os.path.exists(scaler_path):
             self.scaler = joblib.load(scaler_path)
-            self.logger.info(f"Scaler loaded from: {scaler_path}")
-            
-        # Load training timestamp from log
-        log_path = os.path.join(model_dir, self.config['model_persistence']['training_log_filename'])
-        if os.path.exists(log_path):
-            with open(log_path, 'r') as f:
-                training_log = json.load(f)
-            if training_log.get('last_training_time'):
-                self.last_training_time = datetime.fromisoformat(training_log['last_training_time'])
-                
-        self.is_trained = True
-        return model_path
+            if os.path.exists(meta_path):
+                with open(meta_path, 'r') as f:
+                    meta = json.load(f)
+                self.feature_names = meta['feature_names']
+                self.target_name = meta['target_name']
+                self.class_names = {int(k): v for k, v in meta['class_names'].items()}
+                if meta.get('last_training_time'):
+                    self.last_training_time = datetime.fromisoformat(meta['last_training_time'])
+            self.is_trained = True
+            self.logger.info(f"Model loaded from: {model_dir}")
+        else:
+     
+     
+            raise FileNotFoundError(f"Model file not found: {model_path}")
         
     def predict(self, X):
-        """
-        Make predictions using the trained model.
-        
-        Args:
-            X: Feature matrix
-            
-        Returns:
-            predictions: Array of predicted classes
-        """
         if not self.is_trained:
             raise ValueError("Model must be trained before making predictions")
-            
-        return self.model.predict(X)
-        
+        X_scaled = self.prepare_features(X)
+        return self.model.predict(X_scaled)
+
+
+
     def predict_proba(self, X):
-        """
-        Get prediction probabilities.
-        
-        Args:
-            X: Feature matrix
-            
-        Returns:
-            probabilities: Array of class probabilities
-        """
         if not self.is_trained:
             raise ValueError("Model must be trained before making predictions")
-            
-        return self.model.predict_proba(X)
-
-
-def create_model(config_path=None):
-    """
-    Factory function to create a RockburstRandomForestModel instance.
-    
-    Args:
-        config_path: Path to configuration file
-        
-    Returns:
-        RockburstRandomForestModel: Configured model instance
-    """
-    return RockburstRandomForestModel(config_path)
+        X_scaled = self.prepare_features(X)
+        return self.model.predict_proba(X_scaled)
 
 
 if __name__ == "__main__":
-    # Example usage
-    model = create_model()
-    print("Random Forest model created successfully")
-    print(f"Model info: {model.get_model_info()}")
+    # Example usage: train and save model
+    model = RockburstRandomForestModel()
+    X, y = model.load_data('data/preprocess/Rockburst_in_Tunnel_V3.csv')
+    model.train(X, y)
+    model.save_model()
+    print("Random Forest model trained and saved successfully.")

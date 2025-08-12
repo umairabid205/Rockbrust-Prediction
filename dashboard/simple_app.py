@@ -388,14 +388,16 @@ def get_influxdb_data():
         if data:
             df = pd.DataFrame(data)
             # Convert timestamp to local timezone for display
-            df['timestamp'] = pd.to_datetime(df['timestamp']).dt.tz_convert('UTC').dt.tz_localize(None)
+            # Robustly convert to local time (handles both naive and aware timestamps)
+            df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True).dt.tz_localize(None)
             return df.drop_duplicates().reset_index(drop=True)
         else:
             # If no data found, return empty DataFrame with correct structure
             return pd.DataFrame(columns=['timestamp', 'prediction', 'probability', 'risk_level'])
             
     except Exception as e:
-        st.warning(f"Could not connect to InfluxDB: {str(e)}. Showing simulated data.")
+        # Silently fallback to simulated data when InfluxDB is not available
+        # st.warning(f"Could not connect to InfluxDB: {str(e)}. Showing simulated data.")
         # Fallback to simulated data
         np.random.seed(int(datetime.now().timestamp()) % 100)
         
@@ -482,14 +484,14 @@ def main():
             st.markdown("**Seismic Parameters**")
             
             # Input parameters
-            duration_days = st.slider("Duration (days)", 1.0, 100.0, 15.5, 0.1)
-            energy_unit_log = st.slider("Energy Unit (log)", 1.0, 10.0, 5.2, 0.1)
-            energy_density = st.slider("Energy Density (J/m²)", 100.0, 1000.0, 450.0, 10.0)
-            volume_m3_sqr = st.slider("Volume (m³²)", 50.0, 500.0, 120.0, 1.0)
-            event_freq_log = st.slider("Event Frequency (log/day)", 1.0, 5.0, 2.8, 0.1)
-            energy_joule_day = st.slider("Energy per Day (J/day)", 100.0, 2000.0, 890.0, 10.0)
-            volume_per_day = st.slider("Volume per Day (m³/day)", 100.0, 1000.0, 350.0, 10.0)
-            energy_per_volume_log = st.slider("Energy per Volume (log)", 1.0, 10.0, 3.4, 0.1)
+            duration_days = st.slider("Duration (days)", 0.1, 100.0, 15.5, 0.1)
+            energy_unit_log = st.slider("Energy Unit (log)", 0.0, 10.0, 5.2, 0.1)
+            energy_density = st.slider("Energy Density (Joule²)", 0.0, 10000.0, 450.0, 1.0)
+            volume_m3_sqr = st.slider("Volume (m³²)", 0.0, 1000.0, 120.0, 1.0)
+            event_freq_log = st.slider("Event Frequency (log/day)", 0.0, 10.0, 2.8, 0.1)
+            energy_joule_day = st.slider("Energy per Day (Joule²)", 0.0, 10000.0, 890.0, 1.0)
+            volume_per_day = st.slider("Volume per Day (m³)", 0.0, 2000.0, 350.0, 1.0)
+            energy_per_volume_log = st.slider("Energy per Volume (log)", 0.0, 10.0, 3.4, 0.1)
             
             predict_button = st.form_submit_button("🚀 Make Prediction", use_container_width=True)
         
@@ -541,7 +543,7 @@ def main():
     
     # Right Column - Data Visualization
     with col_right:
-        st.markdown("### 📊 Recent Predictions (InfluxDB Data)")
+        st.markdown("### 📊 Recent Predictions (Simulated Data)")
         
         # Get and display recent data
         df = get_influxdb_data()
@@ -640,7 +642,7 @@ def main():
     st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown(
         "<div style='text-align: center; color: #666; padding: 1rem;'>"
-        "🛡️ Rockburst Prediction System | Powered by ML & InfluxDB"
+        "🛡️ Rockburst Prediction System | Powered by ML & Simulated Data for Demo"
         "</div>", 
         unsafe_allow_html=True
     )

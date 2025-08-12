@@ -52,7 +52,7 @@ try:
 except ImportError:
     MLFLOW_AVAILABLE = False
 
-# Optional InfluxDB integration
+#InfluxDB integration
 try:
     from influxdb_client import InfluxDBClient, Point
     from influxdb_client.client.write_api import SYNCHRONOUS
