@@ -2,7 +2,7 @@
 Rockburst Data Ingestion DAG
 =============================
 This DAG handles the complete data ingestion pipeline for rockburst sensor data.
-It includes data collection, validation, preprocessing, and storage operations.
+It includes data collection, validation, preprocessing,storage operations.
 
 Author: Team GAMMA
 Created: August 10, 2025
@@ -1036,6 +1036,11 @@ check_data_directory_task = PythonOperator(
     retry_delay=timedelta(minutes=2)  # Wait 2 minutes before retrying
 )
 
+
+
+
+
+
 # Task 2: Validate CSV data quality and structure
 validate_csv_data_task = PythonOperator(
     task_id='validate_csv_data_task',  # Unique identifier for this task
@@ -1056,6 +1061,9 @@ validate_csv_data_task = PythonOperator(
     retries=2,  # Retry twice if task fails (data validation is critical)
     retry_delay=timedelta(minutes=3)  # Wait 3 minutes before retrying
 )
+
+
+
 
 # Task 3: Preprocess sensor data for model training
 preprocess_sensor_data_task = PythonOperator(
@@ -1078,6 +1086,9 @@ preprocess_sensor_data_task = PythonOperator(
     retry_delay=timedelta(minutes=5)  # Wait 5 minutes before retrying (longer for data processing)
 )
 
+
+
+
 # Task 4: Store preprocessed data in InfluxDB
 store_influxdb_task = PythonOperator(
     task_id='store_influxdb_task',  # Unique identifier for this task
@@ -1099,6 +1110,8 @@ store_influxdb_task = PythonOperator(
     retry_delay=timedelta(minutes=3)  # Wait 3 minutes before retrying
 )
 
+
+
 # Task 5: Generate comprehensive data quality report
 generate_report_task = PythonOperator(
     task_id='generate_report_task',  # Unique identifier for this task
@@ -1119,6 +1132,8 @@ generate_report_task = PythonOperator(
     retries=1,  # Retry once if report generation fails
     retry_delay=timedelta(minutes=2)  # Wait 2 minutes before retrying
 )
+
+
 
 # Define task dependencies - the order in which tasks should run
 # Each task depends on the successful completion of the previous task
